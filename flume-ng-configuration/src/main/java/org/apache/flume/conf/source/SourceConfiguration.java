@@ -188,6 +188,13 @@ public class SourceConfiguration extends ComponentConfiguration {
     SPOOLDIR("org.apache.flume.conf.source.SpoolDirectorySourceConfiguration"),
 
     /**
+     * Sync directory source
+     *
+     * @see org.apache.flume.source.SyncDirectorySource
+     */
+    SYNCDIR("org.apache.flume.conf.source.DirectorySyncSourceConfiguration"),
+
+    /**
      * HTTP Source
      *
      * @see org.apache.flume.source.http.HTTPSource
