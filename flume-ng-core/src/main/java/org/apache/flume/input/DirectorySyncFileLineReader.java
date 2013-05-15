@@ -21,6 +21,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.IOFileFilter;
+import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.flume.FlumeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -202,7 +204,27 @@ public class DirectorySyncFileLineReader {
       return Optional.absent();
     }
     if (null == filesIterator) {
-      filesIterator = FileUtils.iterateFiles(directory, null, true);
+      filesIterator = FileUtils.iterateFiles(directory, new IOFileFilter() {
+        @Override
+        public boolean accept(File file) {
+          if (file.isFile()) {
+            String fileStr = file.getName();
+            if (!(fileStr.endsWith(endFileSuffix) ||
+                fileStr.endsWith(statsFileSuffix) ||
+                fileStr.endsWith(finishedStatsFileSuffix))) {
+              File finishedMarkFile = new File(file.getPath() + finishedStatsFileSuffix);
+              if (!finishedMarkFile.exists())
+                return true;
+            }
+          }
+          return false;
+        }
+
+        @Override
+        public boolean accept(File dir, String name) {
+          return false;
+        }
+      }, TrueFileFilter.INSTANCE);
     }
 
     File nextFile;
