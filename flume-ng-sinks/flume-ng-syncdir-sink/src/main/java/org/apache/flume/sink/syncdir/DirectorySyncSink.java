@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package org.apache.flume.sink;
+package org.apache.flume.sink.syncdir;
 
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
@@ -26,7 +26,7 @@ import org.apache.flume.conf.Configurable;
 import org.apache.flume.instrumentation.SinkCounter;
 import org.apache.flume.serialization.EventSerializer;
 import org.apache.flume.serialization.EventSerializerFactory;
-import org.apache.flume.source.DirectorySyncSourceConfigurationConstants;
+import org.apache.flume.sink.AbstractSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,9 +39,10 @@ import java.util.Map;
 public class DirectorySyncSink extends AbstractSink implements Configurable {
   private static final Logger logger = LoggerFactory
       .getLogger(DirectorySyncSink.class);
-  private static final int defaultBatchSize = 100;
-  private int batchSize = defaultBatchSize;
+
+  private int batchSize;
   private File directory;
+  private String fileNameHeader;
   private File cachedFile;
   private OutputStream cachedOutputStream;
   private EventSerializer cachedSerializer;
@@ -54,19 +55,26 @@ public class DirectorySyncSink extends AbstractSink implements Configurable {
 
   @Override
   public void configure(Context context) {
-    String directory = context.getString("directory");
+    /* init config */
+    String directory = context.getString(
+        SyncDirSinkConfigurationConstants.SYNC_DIRECTORY);
+    fileNameHeader = context.getString(
+        SyncDirSinkConfigurationConstants.FILENAME_HEADER_KEY);
+    serializerType = context.getString(
+        SyncDirSinkConfigurationConstants.SERIALIZER,
+        SyncDirSinkConfigurationConstants.DEFAULT_SERIALIZER);
+    batchSize = context.getInteger(
+        SyncDirSinkConfigurationConstants.BATCH_SIZE,
+        SyncDirSinkConfigurationConstants.DEFAULT_BATCH_SIZE);
 
-    serializerType = context.getString("serializer", "TEXT");
-    serializerContext =
-        new Context(context.getSubProperties(EventSerializer.CTX_PREFIX));
-
-    Preconditions.checkArgument(directory != null, "Directory may not be null");
-    Preconditions.checkNotNull(serializerType, "Serializer type is undefined");
-
-    batchSize = context.getInteger("sink.batchSize", defaultBatchSize);
+    Preconditions.checkNotNull(
+        directory, "directory must be defined");
+    Preconditions.checkNotNull(
+        fileNameHeader, "filename header key must be defined");
 
     this.directory = new File(directory);
-
+    serializerContext = new Context(context.getSubProperties(
+        SyncDirSinkConfigurationConstants.SERIALIZER_PREFIX));
     if (sinkCounter == null) {
       sinkCounter = new SinkCounter(getName());
     }
@@ -95,8 +103,7 @@ public class DirectorySyncSink extends AbstractSink implements Configurable {
         event = channel.take();
         if (event != null) {
           Map<String, String> headers = event.getHeaders();
-          String eventFileStr = headers.get(
-              DirectorySyncSourceConfigurationConstants.FILENAME_HEADER_KEY);
+          String eventFileStr = headers.get(fileNameHeader);
           try {
             File eventFile = new File(directory, eventFileStr);
             Files.createParentDirs(eventFile);
