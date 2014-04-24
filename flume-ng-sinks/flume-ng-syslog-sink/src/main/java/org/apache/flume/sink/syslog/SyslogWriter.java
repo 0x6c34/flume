@@ -24,37 +24,30 @@ public abstract class SyslogWriter {
 
   public abstract void close();
 
-  public boolean isSplit() {
-    return split;
-  }
-
-  public void setSplit(boolean split) {
-    this.split = split;
-  }
-
   public InetAddress getAddress() {
     return address;
-  }
-
-  public void setAddress(InetAddress address) {
-    this.address = address;
   }
 
   public int getPort() {
     return port;
   }
 
-  public void setPort(int port) {
-    this.port = port;
+  public void setMode(Mode mode) {
+    this.mode = mode;
   }
 
   public Mode getMode() {
     return mode;
   }
 
-  public void setMode(Mode mode) {
-    this.mode = mode;
+  public void setSplit(boolean split) {
+    this.split = split;
   }
+
+  public boolean isSplit() {
+    return split;
+  }
+
 }
 
 enum Mode {

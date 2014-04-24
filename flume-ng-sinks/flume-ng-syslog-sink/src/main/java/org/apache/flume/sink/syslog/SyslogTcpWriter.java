@@ -24,7 +24,6 @@ class SyslogTcpWriter extends SyslogWriter {
   @Override
   public void write(byte[] packet)
   throws IOException {
-
   }
 
   @Override

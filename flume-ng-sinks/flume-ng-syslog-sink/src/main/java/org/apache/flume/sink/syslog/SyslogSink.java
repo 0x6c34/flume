@@ -30,7 +30,6 @@ public class SyslogSink extends AbstractSink implements Configurable {
 
   private int facility; // range: 0-23
   private int severity; // range: 0-7
-  private Priority priority;
   private String host;
   private boolean split;
   private Mode mode;
@@ -83,6 +82,8 @@ public class SyslogSink extends AbstractSink implements Configurable {
       throw new FlumeException("error while retrieving Syslog writer with " +
           "host string: " + host, e);
     }
+    syslogWriter.setMode(mode);
+    syslogWriter.setSplit(split);
 
     // flume sink start
     super.start();

@@ -24,11 +24,11 @@ limitations under the License.
     <parent>
         <artifactId>flume-ng-sinks</artifactId>
         <groupId>org.apache.flume</groupId>
-        <version>1.4.0</version>
+        <version>1.5.0-SNAPSHOT</version>
     </parent>
 
     <groupId>org.apache.flume.flume-ng-sinks</groupId>
-    <artifactId>flume-syslog-sink</artifactId>
+    <artifactId>flume-ng-syslog-sink</artifactId>
     <name>Flume NG Syslog Sink</name>
 
     <build>
