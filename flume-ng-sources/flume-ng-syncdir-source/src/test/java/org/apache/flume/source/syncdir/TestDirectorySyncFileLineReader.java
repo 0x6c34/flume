@@ -14,7 +14,7 @@
    limitations under the License.
  */
 
-package org.apache.flume.input;
+package org.apache.flume.source.syncdir;
 
 import com.google.common.io.Files;
 import junit.framework.Assert;

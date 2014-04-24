@@ -14,7 +14,7 @@
    limitations under the License.
  */
 
-package org.apache.flume.source;
+package org.apache.flume.source.syncdir;
 
 public class DirectorySyncSourceConfigurationConstants {
   /** Directory to sync. */
@@ -33,7 +33,7 @@ public class DirectorySyncSourceConfigurationConstants {
   public static final String DEFAULT_END_FILE_SUFFIX = ".done";
   /**
    * Set the status files prefix and suffix while using
-   * {@link org.apache.flume.input.ResumableFileLineReader}.
+   * {@link ResumableFileLineReader}.
    */
   public static final String STATS_FILE_PREFIX = "syncingStatsFilePrefix";
   public static final String DEFAULT_STATS_FILE_PREFIX = ".";
@@ -42,7 +42,7 @@ public class DirectorySyncSourceConfigurationConstants {
   /** Suffix appended to files when they are finished being sent. */
   /**
    * Set the status file suffix's ending form while using {@link
-   * org.apache.flume.input.ResumableFileLineReader}.
+   * ResumableFileLineReader}.
    */
   public static final String SYNCED_STATS_FILE_SUFFIX = "syncedStatsFileSuffix";
   public static final String DEFAULT_SYNCED_STATS_FILE_SUFFIX = ".FLUME-COMPLETED";

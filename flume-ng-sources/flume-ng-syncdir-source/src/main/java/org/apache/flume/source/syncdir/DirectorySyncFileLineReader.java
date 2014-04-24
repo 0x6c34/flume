@@ -14,7 +14,7 @@
    limitations under the License.
  */
 
-package org.apache.flume.input;
+package org.apache.flume.source.syncdir;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
