@@ -16,7 +16,7 @@
 
 package org.apache.flume.source.syncdir;
 
-public class DirectorySyncSourceConfigurationConstants {
+public class SyncDirSourceConfigurationConstants {
   /** Directory to sync. */
   public static final String SYNC_DIRECTORY = "directory";
   /** All files in this directory would prepend this prefix */

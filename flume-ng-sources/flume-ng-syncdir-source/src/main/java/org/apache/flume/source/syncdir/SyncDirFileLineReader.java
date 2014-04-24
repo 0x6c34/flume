@@ -42,9 +42,9 @@ import java.util.List;
  * sync were done(through {@link #readLine()} calls). The user must {@link
  * #commit()} each read, to indicate that the lines have been fully processed.
  */
-public class DirectorySyncFileLineReader {
+public class SyncDirFileLineReader {
   private static final Logger logger = LoggerFactory.getLogger(
-      DirectorySyncFileLineReader.class);
+      SyncDirFileLineReader.class);
   private File directory;
   private String endFileSuffix;
   private String statsFilePrefix;
@@ -59,18 +59,18 @@ public class DirectorySyncFileLineReader {
   private boolean disabled = false;
 
   /**
-   * Create a DirectorySyncFileLineReader to watch the given syncDirectory.
+   * Create a SyncDirFileLineReader to watch the given syncDirectory.
    *
    * @param directory               The syncDirectory to watch
    * @param endFileSuffix           The suffix to append to completed files
    * @param statsFileSuffix
    * @param finishedStatsFileSuffix
    */
-  public DirectorySyncFileLineReader(File directory,
-                                     final String endFileSuffix,
-                                     final String statsFilePrefix,
-                                     final String statsFileSuffix,
-                                     final String finishedStatsFileSuffix) {
+  public SyncDirFileLineReader(File directory,
+                               final String endFileSuffix,
+                               final String statsFilePrefix,
+                               final String statsFileSuffix,
+                               final String finishedStatsFileSuffix) {
     // Verify syncDirectory exists and is readable/writable
     Preconditions.checkNotNull(directory);
     Preconditions.checkState(directory.exists(),
