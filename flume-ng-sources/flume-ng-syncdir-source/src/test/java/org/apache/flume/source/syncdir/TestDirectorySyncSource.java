@@ -14,7 +14,7 @@
    limitations under the License.
  */
 
-package org.apache.flume.source;
+package org.apache.flume.source.syncdir;
 
 import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;

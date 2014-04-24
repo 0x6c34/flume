@@ -14,7 +14,7 @@
    limitations under the License.
  */
 
-package org.apache.flume.input;
+package org.apache.flume.source.syncdir;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

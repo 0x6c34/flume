@@ -14,7 +14,7 @@
    limitations under the License.
  */
 
-package org.apache.flume.input;
+package org.apache.flume.source.syncdir;
 
 import org.junit.After;
 import org.junit.Assert;

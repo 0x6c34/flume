@@ -14,7 +14,7 @@
    limitations under the License.
  */
 
-package org.apache.flume.source;
+package org.apache.flume.source.syncdir;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -24,7 +24,7 @@ import org.apache.flume.Event;
 import org.apache.flume.EventDrivenSource;
 import org.apache.flume.conf.Configurable;
 import org.apache.flume.event.EventBuilder;
-import org.apache.flume.input.DirectorySyncFileLineReader;
+import org.apache.flume.source.AbstractSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
