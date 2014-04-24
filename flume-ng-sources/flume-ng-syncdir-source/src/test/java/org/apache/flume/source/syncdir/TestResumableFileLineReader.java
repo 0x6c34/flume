@@ -29,7 +29,7 @@ import java.nio.charset.Charset;
 import java.util.LinkedList;
 import java.util.List;
 
-public class TestResumableUTF8FileReader {
+public class TestResumableFileLineReader {
   File srcFile;
 
   @Before

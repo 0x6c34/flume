@@ -35,7 +35,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * DirectorySyncSource is a source that will sync files like spool directory
+ * SyncDirSource is a source that will sync files like spool directory
  * but also copy the directory's original layout. Also unlike spool
  * directory, this source will also track changed files.
  * <p/>
@@ -43,11 +43,11 @@ import java.util.concurrent.TimeUnit;
  * if an empty file with suffix  ".done" that present in the same directory of
  * the same name as of the original file.
  */
-public class DirectorySyncSource extends AbstractSource implements
+public class SyncDirSource extends AbstractSource implements
     Configurable, EventDrivenSource {
 
   private static final Logger logger = LoggerFactory
-      .getLogger(DirectorySyncSource.class);
+      .getLogger(SyncDirSource.class);
   // Delay used when polling for file changes
   private static int POLL_DELAY_MS = 500;
   /* Config options */
@@ -57,22 +57,22 @@ public class DirectorySyncSource extends AbstractSource implements
   private String statsFilePrefix;
   private String syncingStatsFileSuffix;
   private String syncedStatsFileSuffix;
-  private String filenameHeaderKey = DirectorySyncSourceConfigurationConstants.FILENAME_HEADER_KEY;
+  private String filenameHeaderKey = SyncDirSourceConfigurationConstants.FILENAME_HEADER_KEY;
   private int batchSize;
   private ScheduledExecutorService executor;
   private CounterGroup counterGroup;
   private Runnable runner;
-  private DirectorySyncFileLineReader reader;
+  private SyncDirFileLineReader reader;
 
   @Override
   public synchronized void start() {
-    logger.info("DirectorySyncSource source starting with directory:{}",
+    logger.info("SyncDirSource source starting with directory:{}",
         syncDirectory);
 
     executor = Executors.newSingleThreadScheduledExecutor();
     counterGroup = new CounterGroup();
 
-    reader = new DirectorySyncFileLineReader(
+    reader = new SyncDirFileLineReader(
         syncDirectory, endFileSuffix,
         statsFilePrefix, syncingStatsFileSuffix, syncedStatsFileSuffix);
     runner = new DirectorySyncRunnable(reader, counterGroup);
@@ -81,41 +81,41 @@ public class DirectorySyncSource extends AbstractSource implements
         runner, 0, POLL_DELAY_MS, TimeUnit.MILLISECONDS);
 
     super.start();
-    logger.debug("DirectorySyncSource source started");
+    logger.debug("SyncDirSource source started");
   }
 
   @Override
   public synchronized void stop() {
     super.stop();
-    logger.debug("DirectorySyncSource source stopped");
+    logger.debug("SyncDirSource source stopped");
   }
 
   @Override
   public void configure(Context context) {
     String syncDirectoryStr = context.getString(
-        DirectorySyncSourceConfigurationConstants.SYNC_DIRECTORY);
+        SyncDirSourceConfigurationConstants.SYNC_DIRECTORY);
     Preconditions.checkState(syncDirectoryStr != null,
         "Configuration must specify a sync directory");
     syncDirectory = new File(syncDirectoryStr);
 
     directoryPrefix = context.getString(
-        DirectorySyncSourceConfigurationConstants.DIRECTORY_PREFIX,
-        DirectorySyncSourceConfigurationConstants.DEFAULT_DIRECTORY_PREFIX);
+        SyncDirSourceConfigurationConstants.DIRECTORY_PREFIX,
+        SyncDirSourceConfigurationConstants.DEFAULT_DIRECTORY_PREFIX);
     endFileSuffix = context.getString(
-        DirectorySyncSourceConfigurationConstants.END_FILE_SUFFIX,
-        DirectorySyncSourceConfigurationConstants.DEFAULT_END_FILE_SUFFIX);
+        SyncDirSourceConfigurationConstants.END_FILE_SUFFIX,
+        SyncDirSourceConfigurationConstants.DEFAULT_END_FILE_SUFFIX);
     statsFilePrefix = context.getString(
-        DirectorySyncSourceConfigurationConstants.STATS_FILE_PREFIX,
-        DirectorySyncSourceConfigurationConstants.DEFAULT_STATS_FILE_PREFIX);
+        SyncDirSourceConfigurationConstants.STATS_FILE_PREFIX,
+        SyncDirSourceConfigurationConstants.DEFAULT_STATS_FILE_PREFIX);
     syncingStatsFileSuffix = context.getString(
-        DirectorySyncSourceConfigurationConstants.SYNCING_STATS_FILE_SUFFIX,
-        DirectorySyncSourceConfigurationConstants.DEFAULT_SYNCING_STATS_FILE_SUFFIX);
+        SyncDirSourceConfigurationConstants.SYNCING_STATS_FILE_SUFFIX,
+        SyncDirSourceConfigurationConstants.DEFAULT_SYNCING_STATS_FILE_SUFFIX);
     syncedStatsFileSuffix = context.getString(
-        DirectorySyncSourceConfigurationConstants.SYNCED_STATS_FILE_SUFFIX,
-        DirectorySyncSourceConfigurationConstants.DEFAULT_SYNCED_STATS_FILE_SUFFIX);
+        SyncDirSourceConfigurationConstants.SYNCED_STATS_FILE_SUFFIX,
+        SyncDirSourceConfigurationConstants.DEFAULT_SYNCED_STATS_FILE_SUFFIX);
     batchSize = context.getInteger(
-        DirectorySyncSourceConfigurationConstants.BATCH_SIZE,
-        DirectorySyncSourceConfigurationConstants.DEFAULT_BATCH_SIZE);
+        SyncDirSourceConfigurationConstants.BATCH_SIZE,
+        SyncDirSourceConfigurationConstants.DEFAULT_BATCH_SIZE);
   }
 
   private Event createEvent(byte[] lineEntry, String filename) {
@@ -130,10 +130,10 @@ public class DirectorySyncSource extends AbstractSource implements
   }
 
   private class DirectorySyncRunnable implements Runnable {
-    private DirectorySyncFileLineReader reader;
+    private SyncDirFileLineReader reader;
     private CounterGroup counterGroup;
 
-    public DirectorySyncRunnable(DirectorySyncFileLineReader reader,
+    public DirectorySyncRunnable(SyncDirFileLineReader reader,
                                  CounterGroup counterGroup) {
       this.reader = reader;
       this.counterGroup = counterGroup;

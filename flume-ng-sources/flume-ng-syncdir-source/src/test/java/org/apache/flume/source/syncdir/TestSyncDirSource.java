@@ -36,14 +36,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TestDirectorySyncSource {
-  static DirectorySyncSource source;
+public class TestSyncDirSource {
+  static SyncDirSource source;
   static MemoryChannel channel;
   private File tmpDir;
 
   @Before
   public void setUp() throws IOException {
-    source = new DirectorySyncSource();
+    source = new SyncDirSource();
     channel = new MemoryChannel();
 
     Context memContext = new Context();
@@ -74,9 +74,9 @@ public class TestDirectorySyncSource {
         "file1line5\nfile1line6\nfile1line7\nfile1line8\n";
     Files.write(line.getBytes(), f1);
 
-    context.put(DirectorySyncSourceConfigurationConstants.SYNC_DIRECTORY,
+    context.put(SyncDirSourceConfigurationConstants.SYNC_DIRECTORY,
         tmpDir.toString());
-    context.put(DirectorySyncSourceConfigurationConstants.BATCH_SIZE,
+    context.put(SyncDirSourceConfigurationConstants.BATCH_SIZE,
         "100");
 
     Configurables.configure(source, context);
