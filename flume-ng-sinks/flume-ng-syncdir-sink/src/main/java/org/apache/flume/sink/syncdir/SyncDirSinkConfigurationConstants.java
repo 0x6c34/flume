@@ -13,6 +13,6 @@ public class SyncDirSinkConfigurationConstants {
   public static final String FILENAME_HEADER_KEY = "path";
 
   /** What size to batch with before sending to ChannelProcessor. */
-  public static final String BATCH_SIZE = "sink.batchSize";
+  public static final String BATCH_SIZE = "batchSize";
   public static final int DEFAULT_BATCH_SIZE = 100;
 }
