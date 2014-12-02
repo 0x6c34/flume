@@ -36,9 +36,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map;
 
-public class DirectorySyncSink extends AbstractSink implements Configurable {
+public class SyncDirSink extends AbstractSink implements Configurable {
   private static final Logger logger = LoggerFactory
-      .getLogger(DirectorySyncSink.class);
+      .getLogger(SyncDirSink.class);
 
   private int batchSize;
   private File directory;
@@ -50,7 +50,7 @@ public class DirectorySyncSink extends AbstractSink implements Configurable {
   private Context serializerContext;
   private SinkCounter sinkCounter;
 
-  public DirectorySyncSink() {
+  public SyncDirSink() {
   }
 
   @Override
@@ -149,7 +149,7 @@ public class DirectorySyncSink extends AbstractSink implements Configurable {
 
   @Override
   public void stop() {
-    logger.info("DirectorySyncSink {} stopping...", getName());
+    logger.info("SyncDirSink {} stopping...", getName());
     sinkCounter.stop();
     super.stop();
 
@@ -167,7 +167,7 @@ public class DirectorySyncSink extends AbstractSink implements Configurable {
         logger.error("Unable to close output stream. Exception follows.", e);
       }
     }
-    logger.info("DirectorySyncSink {} stopped. Event metrics: {}",
+    logger.info("SyncDirSink {} stopped. Event metrics: {}",
         getName(), sinkCounter);
   }
 

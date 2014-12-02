@@ -52,9 +52,9 @@ public enum SinkType {
   /**
    * Directory Sync Sink
    *
-   * @see DirectorySyncSink
+   * @see SyncDirSink
    */
-  SYNCDIR("org.apache.flume.sink.DirectorySyncSink"),
+  SYNCDIR("org.apache.flume.sink.syncdir.SyncDirSink"),
 
   /**
    * HDFS Sink provided by org.apache.flume.sink.hdfs.HDFSEventSink
