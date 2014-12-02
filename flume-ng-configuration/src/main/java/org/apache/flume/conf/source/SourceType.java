@@ -87,9 +87,9 @@ public enum SourceType {
   /**
    * Sync directory source
    *
-   * @see org.apache.flume.source.SyncDirectorySource
+   * @see org.apache.flume.source.syncdir.SyncDirSource
    */
-  SYNCDIR("org.apache.flume.source.DirectorySyncSource"),
+  SYNCDIR("org.apache.flume.source.syncdir.SyncDirSource"),
 
   /**
    * HTTP Source
