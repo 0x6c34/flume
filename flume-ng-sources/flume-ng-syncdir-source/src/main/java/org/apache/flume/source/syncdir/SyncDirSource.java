@@ -49,7 +49,7 @@ public class SyncDirSource extends AbstractSource implements
   private static final Logger logger = LoggerFactory
       .getLogger(SyncDirSource.class);
   // Delay used when polling for file changes
-  private static int POLL_DELAY_MS = 500;
+  private int poll_delay_ms = 2000;
   /* Config options */
   private File syncDirectory;
   private String directoryPrefix;
@@ -78,7 +78,7 @@ public class SyncDirSource extends AbstractSource implements
     runner = new DirectorySyncRunnable(reader, counterGroup);
 
     executor.scheduleWithFixedDelay(
-        runner, 0, POLL_DELAY_MS, TimeUnit.MILLISECONDS);
+        runner, 0, poll_delay_ms, TimeUnit.MILLISECONDS);
 
     super.start();
     logger.debug("SyncDirSource source started");
@@ -116,6 +116,9 @@ public class SyncDirSource extends AbstractSource implements
     batchSize = context.getInteger(
         SyncDirSourceConfigurationConstants.BATCH_SIZE,
         SyncDirSourceConfigurationConstants.DEFAULT_BATCH_SIZE);
+    poll_delay_ms = context.getInteger(
+        SyncDirSourceConfigurationConstants.POLL_DELAY_MS,
+        SyncDirSourceConfigurationConstants.DEFAULT_POLL_DELAY_MS);
   }
 
   private Event createEvent(byte[] lineEntry, String filename) {

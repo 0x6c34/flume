@@ -52,4 +52,8 @@ public class SyncDirSourceConfigurationConstants {
   /** What size to batch with before sending to ChannelProcessor. */
   public static final String BATCH_SIZE = "batchSize";
   public static final int DEFAULT_BATCH_SIZE = 100;
+
+  /** Flume scheduled poll delay by milliseconds */
+  public static final String POLL_DELAY_MS="delay";
+  public static final int DEFAULT_POLL_DELAY_MS = 2000;
 }
