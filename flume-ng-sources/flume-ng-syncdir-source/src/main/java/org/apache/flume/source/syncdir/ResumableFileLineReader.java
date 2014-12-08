@@ -215,11 +215,11 @@ public class ResumableFileLineReader {
   public void reset() throws IOException {
     if (finished || damaged) return;
 
-    bb.clear();
-    ch.position(readingPosition);
     readingPosition = markedPosition;
-    logger.info("file '{}': reverted to previous position: [{}]",
-        file, String.valueOf(readingPosition));
+    bb.clear();
+    ch.position(markedPosition);
+    logger.info("file '{}': reverted to previous marked position: [{}]",
+        file, String.valueOf(markedPosition));
   }
 
   public File getFile() {
