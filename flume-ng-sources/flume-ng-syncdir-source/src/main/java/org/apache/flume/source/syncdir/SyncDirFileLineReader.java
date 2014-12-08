@@ -147,7 +147,7 @@ public class SyncDirFileLineReader {
           throw new IllegalStateException("File should not roll when " +
               "commit is outstanding.");
         }
-        logger.info("Last read was never committed - resetting mark position.");
+        logger.info("Last reads were not committed");
         currentFile.get().reset();
         committed = true;
       }
@@ -202,8 +202,7 @@ public class SyncDirFileLineReader {
   private void retireCurrentFile() throws IOException {
     Preconditions.checkState(currentFile.isPresent());
 
-    logger.debug("file '{}': retiring...", currentFile.get().getFile());
-    currentFile.get().commit();
+    logger.debug("retire file: '{}'", currentFile.get().getFile());
     currentFile.get().close();
   }
 
@@ -259,7 +258,9 @@ public class SyncDirFileLineReader {
     nextFile = filesIterator.next();
     logger.debug("treating next file: {}", nextFile);
     fileEnded = new File(nextFile.getPath() + endFileSuffix).exists();
-    logger.debug("file {} marked as ended", nextFile);
+    if (fileEnded) {
+      logger.debug("file {} marked as ended", nextFile);
+    }
     try {
       ResumableFileLineReader file = new ResumableFileLineReader(nextFile, fileEnded,
           statsFilePrefix, statsFileSuffix, finishedStatsFileSuffix);

@@ -174,12 +174,11 @@ public class ResumableFileLineReader {
   }
 
   public void close() throws IOException {
-    logger.debug("file '{}': closing...", file);
     if (null != ch)
       ch.close();
     if (null != statsFileOut)
       statsFileOut.close();
-    logger.debug("file '{}': closed", file);
+    logger.debug("close file: '{}'", file);
   }
 
   private void purgeStatFile() throws IOException {
@@ -191,16 +190,15 @@ public class ResumableFileLineReader {
   /** Record the position of current reading file into stats file. */
   public void commit() throws IOException {
     if (finished) {
-      logger.warn("commit while file is done reading: {}", file);
+      logger.warn("commit while file is marked as finished: {}", file);
       return;
     }
 
     if (statsFileBroken) {
-      logger.warn("commit while file's state file is unavailable: {}", file);
+      logger.warn("commit while file's stat file is unavailable: {}", file);
       return;
     }
 
-    logger.debug("committing to '{}'", statsFile);
     /* open stat file for write */
     try {
       if (null == statsFileOut) {
@@ -216,10 +214,7 @@ public class ResumableFileLineReader {
     statsFileOut.write(String.valueOf(readingPosition).getBytes());
     statsFileOut.flush();
     markedPosition = readingPosition;
-    logger.debug("stats file written: '{}'", statsFile);
-    if (eof) {
-      statsFileOut.getChannel().size();
-    }
+    logger.trace("committed '{}', position: {}", statsFile, markedPosition);
     if (fileEnded && eof) {
       logger.debug("sealing stats file, renaming from '{}' to '{}'",
           statsFile, finishedStatsFile);
