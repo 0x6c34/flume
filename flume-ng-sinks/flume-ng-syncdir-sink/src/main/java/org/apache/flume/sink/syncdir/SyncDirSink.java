@@ -59,7 +59,8 @@ public class SyncDirSink extends AbstractSink implements Configurable {
     String directory = context.getString(
         SyncDirSinkConfigurationConstants.SYNC_DIRECTORY);
     fileNameHeader = context.getString(
-        SyncDirSinkConfigurationConstants.FILENAME_HEADER_KEY);
+        SyncDirSinkConfigurationConstants.FILENAME_HEADER_KEY,
+        SyncDirSinkConfigurationConstants.DEFAULT_FILENAME_HEADER_KEY);
     serializerType = context.getString(
         SyncDirSinkConfigurationConstants.SERIALIZER,
         SyncDirSinkConfigurationConstants.DEFAULT_SERIALIZER);
@@ -69,8 +70,6 @@ public class SyncDirSink extends AbstractSink implements Configurable {
 
     Preconditions.checkNotNull(
         directory, "directory must be defined");
-    Preconditions.checkNotNull(
-        fileNameHeader, "filename header key must be defined");
 
     this.directory = new File(directory);
     serializerContext = new Context(context.getSubProperties(
