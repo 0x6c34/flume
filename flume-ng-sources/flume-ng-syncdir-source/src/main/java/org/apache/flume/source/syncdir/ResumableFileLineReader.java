@@ -48,7 +48,7 @@ public class ResumableFileLineReader {
   private long readingPosition = 0;
   private boolean eof = false;
   private boolean finished = false;
-  private boolean damaged = false;
+  private boolean statsFileBroken = false;
 
   /**
    * @param file                    to read
@@ -86,7 +86,8 @@ public class ResumableFileLineReader {
     logger.debug("retrieving status for file '{}'", file);
     finished = finishedStatsFile.exists();
     if (finished) {
-      logger.debug("found stats file: '{}', no more reading needed", finishedStatsFile);
+      logger.debug("found finished stats file: '{}', no more reading needed",
+          finishedStatsFile);
       return;
     }
     if (statsFile.exists()) {
@@ -102,22 +103,21 @@ public class ResumableFileLineReader {
         reader.close();
       }
       if (lines.size() == 0 || lines.get(0).length() == 0) {
-        damaged = true;
-        logger.error("stats file '{}' damaged, aborting...",
+        logger.error("stats file '{}' statsFileBroken, reset position to 0",
             statsFile);
-        return;
+        purgeStatFile();
       }
       try {
         readingPosition = markedPosition = Long.valueOf(lines.get(0));
         ch.position(markedPosition);
       } catch (NumberFormatException e) {
-        damaged = true;
-        logger.warn("stats file '{}' format error, aborting...",
+        logger.warn("stats file '{}' format error, reset stat file",
             file.getAbsolutePath());
-        throw e;
+        purgeStatFile();
       }
     }
-    logger.debug("opened stats file '{}', got line number '{}'", statsFile, markedPosition);
+    logger.debug("opened stats file '{}', got line number '{}'",
+        statsFile, markedPosition);
   }
 
   private void ensureOpen() throws IOException {
@@ -128,7 +128,7 @@ public class ResumableFileLineReader {
 
   public byte[] readLine() throws IOException {
     /* this file was already marked as finished, EOF now */
-    if (finished || damaged || eof) return null;
+    if (finished || statsFileBroken || eof) return null;
     ensureOpen();
 
     if (null == bb) {
@@ -182,17 +182,33 @@ public class ResumableFileLineReader {
     logger.debug("file '{}': closed", file);
   }
 
+  private void purgeStatFile() throws IOException {
+    statsFileOut.close();
+    statsFileOut = null;
+    statsFile.delete();
+  }
+
   /** Record the position of current reading file into stats file. */
   public void commit() throws IOException {
-    if (finished || damaged) return;
+    if (finished) {
+      logger.warn("commit while file is done reading: {}", file);
+      return;
+    }
 
-    logger.debug("committing '{}'", statsFile);
+    if (statsFileBroken) {
+      logger.warn("commit while file's state file is unavailable: {}", file);
+      return;
+    }
+
+    logger.debug("committing to '{}'", statsFile);
     /* open stat file for write */
     try {
-      if (null == statsFileOut)
+      if (null == statsFileOut) {
         statsFileOut = new FileOutputStream(statsFile, false);
+        statsFileBroken = false;
+      }
     } catch (IOException ioe) {
-      damaged = true;
+      statsFileBroken = true;
       throw new IOException("cannot create stats file for log file '" + file +
           "', this class needs stats file to function normally", ioe);
     }
@@ -200,20 +216,23 @@ public class ResumableFileLineReader {
     statsFileOut.write(String.valueOf(readingPosition).getBytes());
     statsFileOut.flush();
     markedPosition = readingPosition;
-    logger.debug("'{}': written", statsFile);
+    logger.debug("stats file written: '{}'", statsFile);
+    if (eof) {
+      statsFileOut.getChannel().size();
+    }
     if (fileEnded && eof) {
       logger.debug("sealing stats file, renaming from '{}' to '{}'",
           statsFile, finishedStatsFile);
       statsFileOut.close();
       statsFile.renameTo(finishedStatsFile);
-      logger.debug("sealed");
+      logger.debug("file '{}' marked as done", file);
       finished = true;
     }
   }
 
   /** Rewind reading position to previous recorded position. */
   public void reset() throws IOException {
-    if (finished || damaged) return;
+    if (finished || statsFileBroken) return;
 
     readingPosition = markedPosition;
     bb.clear();
