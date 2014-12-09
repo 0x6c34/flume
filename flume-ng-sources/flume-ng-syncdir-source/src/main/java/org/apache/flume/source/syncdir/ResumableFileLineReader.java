@@ -37,8 +37,8 @@ public class ResumableFileLineReader {
       .class);
   private File file;
   private FileChannel ch;
-  private ByteBuffer bb;
-  private ByteArrayOutputStream lineOut;
+  private ByteBuffer byteBuffer;
+  private ByteArrayOutputStream outputStream;
   private boolean skipLF;
   private boolean fileEnded;
   private File statsFile;
@@ -46,6 +46,7 @@ public class ResumableFileLineReader {
   private FileOutputStream statsFileOut;
   private long markedPosition = 0;
   private long readingPosition = 0;
+  private boolean resumable = false;
   private boolean eof = false;
   private boolean finished = false;
   private boolean statsFileBroken = false;
@@ -69,7 +70,6 @@ public class ResumableFileLineReader {
     if (file.isDirectory())
       throw new IOException("file '" + file + "' is a directory");
     ch = new FileInputStream(file).getChannel();
-    lineOut = new ByteArrayOutputStream(200);
     this.skipLF = false;
     this.fileEnded = fileEnded;
 
@@ -131,45 +131,49 @@ public class ResumableFileLineReader {
     if (finished || statsFileBroken || eof) return null;
     ensureOpen();
 
-    if (null == bb) {
-      bb = ByteBuffer.allocate(128 * 1024); // 128K
-      bb.limit(0); // set it as full
+    if (null == outputStream) {
+      outputStream = new ByteArrayOutputStream(1024); // 1KB
+    } else {
+      outputStream.reset();
+    }
+    if (null == byteBuffer) {
+      byteBuffer = ByteBuffer.allocate(128 * 1024); // 128KB
+    }
+    if (!resumable) {
+      byteBuffer.limit(byteBuffer.position()); // zero buffer
+      resumable = true;
     }
 
-    lineOut.reset();
     while (true) {
-      if (!bb.hasRemaining()) {
-        bb.clear();
-        if (ch.read(bb) == -1) {
-          eof = true;
-          if (lineOut.size() > 0)
-            return lineOut.toByteArray();
-          else
-            return null;
-        }
-        bb.flip();
-      }
-      while (bb.hasRemaining()) {
-        byte b = bb.get();
-        char c = (char) b;
+      while (byteBuffer.hasRemaining()) {
+        byte b = byteBuffer.get();
         readingPosition++;
         if (skipLF) {
           skipLF = false;
-          if (c != '\n') {
-            bb.position(bb.position() - 1);
+          if (b != '\n') {
+            byteBuffer.position(byteBuffer.position() - 1);
             readingPosition--;
           }
-          return lineOut.toByteArray();
+          return outputStream.toByteArray();
         }
-        if (c == '\n') {
-          return lineOut.toByteArray();
+        if (b == '\n') {
+          return outputStream.toByteArray();
         }
-        if (c == '\r') {
+        if (b == '\r') {
           skipLF = true;
           continue;
         }
-        lineOut.write(b);
+        outputStream.write(b);
       }
+      byteBuffer.clear(); // re-init buffer
+      if (ch.read(byteBuffer) == -1) {
+        eof = true;
+        if (outputStream.size() > 0)
+          return outputStream.toByteArray();
+        else
+          return null;
+      }
+      byteBuffer.flip();
     }
   }
 
@@ -229,8 +233,8 @@ public class ResumableFileLineReader {
   public void reset() throws IOException {
     if (finished || statsFileBroken) return;
 
+    resumable = false;
     readingPosition = markedPosition;
-    bb.clear();
     ch.position(markedPosition);
     logger.info("file '{}': reverted to previous marked position: [{}]",
         file, String.valueOf(markedPosition));
