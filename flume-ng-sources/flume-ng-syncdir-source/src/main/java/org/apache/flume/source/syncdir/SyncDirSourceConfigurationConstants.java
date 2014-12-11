@@ -54,8 +54,8 @@ public class SyncDirSourceConfigurationConstants {
   public static final int DEFAULT_BATCH_SIZE = 100;
 
   /** Flume scheduled poll delay by milliseconds */
-  public static final String BACKOFF_INTERVAL ="delay";
+  public static final String BACKOFF_INTERVAL ="backoffInteval";
   public static final int DEFAULT_BACKOFF_INTERVAL = 250;
-  public static final String MAX_BACKOFF_INTERVAL = "maxbackoff";
+  public static final String MAX_BACKOFF_INTERVAL = "maxBackoffInterval";
   public static final int DEFAULT_MAX_BACKOFF_INTERVAL = 4000;
 }
