@@ -136,10 +136,14 @@ public class SyncDirSink extends AbstractSink implements Configurable {
       }
       transaction.commit();
       sinkCounter.addToEventDrainSuccessCount(eventAttemptCounter);
-    } catch (Exception ex) {
+    } catch (EventDeliveryException e) {
       transaction.rollback();
-      throw new EventDeliveryException("Failed to process transaction", ex);
-    } finally {
+      throw e; // no more handling
+    } catch (Exception e) {
+      transaction.rollback();
+      throw new EventDeliveryException("Failed to process transaction", e);
+    }
+    finally {
       transaction.close();
     }
 
