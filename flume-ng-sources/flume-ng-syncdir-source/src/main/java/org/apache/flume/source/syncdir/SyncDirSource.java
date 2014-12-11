@@ -17,7 +17,9 @@
 package org.apache.flume.source.syncdir;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
+import org.apache.flume.ChannelException;
 import org.apache.flume.Context;
 import org.apache.flume.CounterGroup;
 import org.apache.flume.Event;
@@ -35,13 +37,13 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * SyncDirSource is a source that will sync files like spool directory
- * but also copy the directory's original layout. Also unlike spool
- * directory, this source will also track changed files.
+ * SyncDirSource is a source that will sync files like spool directory but also
+ * copy the directory's original layout. Also unlike spool directory, this
+ * source will also track changed files.
  * <p/>
- * For e.g., a file will be identified as finished and stops reading from it
- * if an empty file with suffix  ".done" that present in the same directory of
- * the same name as of the original file.
+ * For e.g., a file will be identified as finished and stops reading from it if
+ * an empty file with suffix  ".done" that present in the same directory of the
+ * same name as of the original file.
  */
 public class SyncDirSource extends AbstractSource implements
     Configurable, EventDrivenSource {
@@ -49,7 +51,9 @@ public class SyncDirSource extends AbstractSource implements
   private static final Logger logger = LoggerFactory
       .getLogger(SyncDirSource.class);
   // Delay used when polling for file changes
-  private int poll_delay_ms = 2000;
+  private boolean backoff = true;
+  private int backoffInterval;
+  private int maxBackoffInterval;
   /* Config options */
   private File syncDirectory;
   private String directoryPrefix;
@@ -57,7 +61,8 @@ public class SyncDirSource extends AbstractSource implements
   private String statsFilePrefix;
   private String syncingStatsFileSuffix;
   private String syncedStatsFileSuffix;
-  private String filenameHeaderKey = SyncDirSourceConfigurationConstants.FILENAME_HEADER_KEY;
+  private String filenameHeaderKey =
+      SyncDirSourceConfigurationConstants.FILENAME_HEADER_KEY;
   private int batchSize;
   private ScheduledExecutorService executor;
   private CounterGroup counterGroup;
@@ -69,7 +74,6 @@ public class SyncDirSource extends AbstractSource implements
     logger.info("SyncDirSource source starting with directory:{}",
         syncDirectory);
 
-    executor = Executors.newSingleThreadScheduledExecutor();
     counterGroup = new CounterGroup();
 
     reader = new SyncDirFileLineReader(
@@ -77,8 +81,8 @@ public class SyncDirSource extends AbstractSource implements
         statsFilePrefix, syncingStatsFileSuffix, syncedStatsFileSuffix);
     runner = new DirectorySyncRunnable(reader, counterGroup);
 
-    executor.scheduleWithFixedDelay(
-        runner, 0, poll_delay_ms, TimeUnit.MILLISECONDS);
+    executor = Executors.newSingleThreadScheduledExecutor();
+    executor.scheduleWithFixedDelay(runner, 0, 2000, TimeUnit.MILLISECONDS);
 
     super.start();
     logger.debug("SyncDirSource source started");
@@ -86,6 +90,14 @@ public class SyncDirSource extends AbstractSource implements
 
   @Override
   public synchronized void stop() {
+    executor.shutdown();
+    try {
+      executor.awaitTermination(10L, TimeUnit.SECONDS);
+    } catch (InterruptedException ex) {
+      logger.info("Interrupted while awaiting termination", ex);
+    }
+    executor.shutdownNow();
+
     super.stop();
     logger.debug("SyncDirSource source stopped");
   }
@@ -116,9 +128,12 @@ public class SyncDirSource extends AbstractSource implements
     batchSize = context.getInteger(
         SyncDirSourceConfigurationConstants.BATCH_SIZE,
         SyncDirSourceConfigurationConstants.DEFAULT_BATCH_SIZE);
-    poll_delay_ms = context.getInteger(
-        SyncDirSourceConfigurationConstants.POLL_DELAY_MS,
-        SyncDirSourceConfigurationConstants.DEFAULT_POLL_DELAY_MS);
+    backoffInterval = context.getInteger(
+        SyncDirSourceConfigurationConstants.BACKOFF_INTERVAL,
+        SyncDirSourceConfigurationConstants.DEFAULT_BACKOFF_INTERVAL);
+    maxBackoffInterval = context.getInteger(
+        SyncDirSourceConfigurationConstants.MAX_BACKOFF_INTERVAL,
+        SyncDirSourceConfigurationConstants.DEFAULT_MAX_BACKOFF_INTERVAL);
   }
 
   private Event createEvent(byte[] lineEntry, String filename) {
@@ -145,7 +160,7 @@ public class SyncDirSource extends AbstractSource implements
     @Override
     public void run() {
       try {
-        while (true) {
+        while (!Thread.interrupted()) {
           List<byte[]> lines = reader.readLines(batchSize);
           if (lines.size() == 0) {
             break;
@@ -157,14 +172,29 @@ public class SyncDirSource extends AbstractSource implements
             counterGroup.incrementAndGet("syncdir.lines.read");
             events.add(createEvent(l, file));
           }
-          getChannelProcessor().processEventBatch(events);
-          reader.commit();
+          try {
+            getChannelProcessor().processEventBatch(events);
+            reader.commit();
+          } catch (ChannelException e) {
+            logger.warn("The channel is full, or this source's batch size is "
+                + "lager than channel's transaction capacity. This source will "
+                + "try again after " + String.valueOf(backoffInterval)
+                + " milliseconds");
+
+            if (backoff) {
+              TimeUnit.MILLISECONDS.sleep(backoffInterval);
+              backoffInterval = backoffInterval << 1;
+              backoffInterval = backoffInterval >= maxBackoffInterval ?
+                  maxBackoffInterval : backoffInterval;
+            }
+            continue;
+          }
         }
       } catch (Throwable t) {
-        logger.error("Uncaught exception in Runnable", t);
-        if (t instanceof Error) {
-          throw (Error) t;
-        }
+        logger.error("FATAL: " + this.toString() + ": " +
+            "Uncaught exception in SpoolDirectorySource thread. " +
+            "Restart or reconfigure Flume to continue processing.", t);
+        Throwables.propagate(t);
       }
     }
   }
