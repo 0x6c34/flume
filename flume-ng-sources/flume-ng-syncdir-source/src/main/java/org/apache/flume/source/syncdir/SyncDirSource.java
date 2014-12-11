@@ -69,6 +69,9 @@ public class SyncDirSource extends AbstractSource implements
   private Runnable runner;
   private SyncDirFileLineReader reader;
 
+  private boolean hitChannelException;
+  private boolean hasFatalError;
+
   @Override
   public synchronized void start() {
     logger.info("SyncDirSource source starting with directory:{}",
@@ -147,6 +150,21 @@ public class SyncDirSource extends AbstractSource implements
     return out;
   }
 
+  /** for testing */
+  protected boolean hitChannelException() {
+    return hitChannelException;
+  }
+
+  /** for testing */
+  protected void setBackoff(final boolean backoff) {
+    this.backoff = backoff;
+  }
+
+  /** for testing */
+  protected boolean hasFatalError() {
+    return hasFatalError;
+  }
+
   private class DirectorySyncRunnable implements Runnable {
     private SyncDirFileLineReader reader;
     private CounterGroup counterGroup;
@@ -176,6 +194,7 @@ public class SyncDirSource extends AbstractSource implements
             getChannelProcessor().processEventBatch(events);
             reader.commit();
           } catch (ChannelException e) {
+            hitChannelException = true;
             logger.warn("The channel is full, or this source's batch size is "
                 + "lager than channel's transaction capacity. This source will "
                 + "try again after " + String.valueOf(backoffInterval)
@@ -194,6 +213,7 @@ public class SyncDirSource extends AbstractSource implements
         logger.error("FATAL: " + this.toString() + ": " +
             "Uncaught exception in SpoolDirectorySource thread. " +
             "Restart or reconfigure Flume to continue processing.", t);
+        hasFatalError = true;
         Throwables.propagate(t);
       }
     }

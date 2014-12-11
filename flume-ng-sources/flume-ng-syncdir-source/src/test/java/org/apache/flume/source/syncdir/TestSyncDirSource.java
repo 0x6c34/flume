@@ -17,6 +17,7 @@
 package org.apache.flume.source.syncdir;
 
 import com.google.common.io.Files;
+import junit.framework.Assert;
 import org.apache.commons.io.FileUtils;
 import org.apache.flume.Channel;
 import org.apache.flume.ChannelSelector;
@@ -27,6 +28,8 @@ import org.apache.flume.channel.ChannelProcessor;
 import org.apache.flume.channel.MemoryChannel;
 import org.apache.flume.channel.ReplicatingChannelSelector;
 import org.apache.flume.conf.Configurables;
+import org.apache.flume.lifecycle.LifecycleController;
+import org.apache.flume.lifecycle.LifecycleState;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,26 +40,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TestSyncDirSource {
-  static SyncDirSource source;
-  static MemoryChannel channel;
   private File tmpDir;
 
   @Before
   public void setUp() throws IOException {
-    source = new SyncDirSource();
-    channel = new MemoryChannel();
-
-    Context memContext = new Context();
-    memContext.put("capacity", "5000");
-    Configurables.configure(channel, memContext);
-
-    List<Channel> channels = new ArrayList<Channel>();
-    channels.add(channel);
-
-    ChannelSelector rcs = new ReplicatingChannelSelector();
-    rcs.setChannels(channels);
-
-    source.setChannelProcessor(new ChannelProcessor(rcs));
     tmpDir = Files.createTempDir();
   }
 
@@ -66,30 +53,97 @@ public class TestSyncDirSource {
   }
 
   @Test
-  public void testPutFilenameHeader() throws IOException, InterruptedException {
-    Context context = new Context();
-    File f1 = File.createTempFile("dirsync", null, tmpDir);
+  public void testLifeCycle() throws IOException, InterruptedException {
+    SyncDirSource source = new SyncDirSource();
+    MemoryChannel channel = new MemoryChannel();
 
+    // configure source
+    Context sourceContext = new Context();
+    sourceContext.put(SyncDirSourceConfigurationConstants.SYNC_DIRECTORY,
+        tmpDir.toString());
+    Configurables.configure(source, sourceContext);
+
+    // configure channel
+    List<Channel> channels = new ArrayList<Channel>();
+    channels.add(channel);
+    ChannelSelector channelSelector = new ReplicatingChannelSelector();
+    channelSelector.setChannels(channels);
+    source.setChannelProcessor(new ChannelProcessor(channelSelector));
+
+    // init file
+    File f1 = File.createTempFile("syncdir_testLifeCycle", null, tmpDir);
     String line = "file1line1\nfile1line2\nfile1line3\nfile1line4\n" +
-        "file1line5\nfile1line6\nfile1line7\nfile1line8\n";
+        "file1line5\nfile1line6\nfile1line7\nfile1line8\n"; // 8 lines
     Files.write(line.getBytes(), f1);
 
-    context.put(SyncDirSourceConfigurationConstants.SYNC_DIRECTORY,
-        tmpDir.toString());
-    context.put(SyncDirSourceConfigurationConstants.BATCH_SIZE,
-        "100");
+    // read
+    for (int i = 0; i < 10; i++) {
+      source.start();
 
-    Configurables.configure(source, context);
-    source.start();
-    Thread.sleep(500);
-    Transaction txn = channel.getTransaction();
-    txn.begin();
-    Event e = channel.take();
-    for (int i = 0; i < 7 && null != e; i++) {
-      e = channel.take();
+      Assert.assertTrue("Reached start or error", LifecycleController.waitForOneOf(
+          source, LifecycleState.START_OR_ERROR));
+      Assert.assertEquals("Server is started", LifecycleState.START,
+          source.getLifecycleState());
+
+      source.stop();
+      Assert.assertTrue("Reached stop or error",
+          LifecycleController.waitForOneOf(source, LifecycleState.STOP_OR_ERROR));
+      Assert.assertEquals("Server is stopped", LifecycleState.STOP,
+          source.getLifecycleState());
     }
-    txn.commit();
-    txn.close();
   }
 
+  @Test
+  public void testRead() throws IOException, InterruptedException {
+    SyncDirSource source = new SyncDirSource();
+    MemoryChannel channel = new MemoryChannel();
+
+    // configure source
+    Context sourceContext = new Context();
+    sourceContext.put(SyncDirSourceConfigurationConstants.SYNC_DIRECTORY,
+        tmpDir.toString());
+    sourceContext.put(SyncDirSourceConfigurationConstants.BATCH_SIZE, "2");
+    Configurables.configure(source, sourceContext);
+
+    // configure channel
+    Context channelContext = new Context();
+    channelContext.put("capacity", "2");
+    channelContext.put("transactionCapacity", "2");
+    Configurables.configure(channel, channelContext);
+    List<Channel> channels = new ArrayList<Channel>();
+    channels.add(channel);
+    ChannelSelector channelSelector = new ReplicatingChannelSelector();
+    channelSelector.setChannels(channels);
+    source.setChannelProcessor(new ChannelProcessor(channelSelector));
+
+    // init file
+    File file = File.createTempFile("syncdir_testNormalRead", null, tmpDir);
+    String line = "file1line1\nfile1line2\nfile1line3\nfile1line4\n" +
+        "file1line5\nfile1line6\nfile1line7\nfile1line8\n"; // 8 lines
+    Files.write(line.getBytes(), file);
+
+    // test read
+    source.start();
+    // Wait for the source to read enough events to fill up the channel.
+    while (!source.hitChannelException())
+      Thread.sleep(50);
+
+    int i, j = 0;
+    Event e = null;
+    for (i = 0; i < 5; i++) {
+      Transaction txn = channel.getTransaction();
+      txn.begin();
+      if ((e = channel.take()) != null) j++;
+      if ((e = channel.take()) != null) j++;
+      txn.commit();
+      txn.close();
+    }
+    Assert.assertTrue("Expected to hit ChannelException, but did not!",
+        source.hitChannelException());
+    System.out.println("normal read lines: " + j);
+    Assert.assertEquals(8, j);
+    channel.stop();
+    source.stop();
+
+  }
 }
