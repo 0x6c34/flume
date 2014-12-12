@@ -24,6 +24,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
 import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.flume.FlumeException;
+import org.apache.flume.serialization.ResettableFileLineReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,9 +52,9 @@ public class SyncDirFileLineReader {
   private String statsFileSuffix;
   private String finishedStatsFileSuffix;
   private Iterator<File> filesIterator;
-  private Optional<ResumableFileLineReader> currentFile = Optional.absent();
+  private Optional<ResettableFileLineReader> currentFile = Optional.absent();
   /** Always contains the last file from which lines have been read. * */
-  private Optional<ResumableFileLineReader> lastFileRead = Optional.absent();
+  private Optional<ResettableFileLineReader> lastFileRead = Optional.absent();
   private boolean committed = true;
   /** A flag to signal an un-recoverable error has occurred. */
   private boolean disabled = false;
@@ -220,7 +221,7 @@ public class SyncDirFileLineReader {
    *
    * @return the next file
    */
-  private Optional<ResumableFileLineReader> getNextFile() {
+  private Optional<ResettableFileLineReader> getNextFile() {
     if (null != filesIterator && !filesIterator.hasNext()) {
       filesIterator = null;
       return Optional.absent();
@@ -262,7 +263,7 @@ public class SyncDirFileLineReader {
       logger.debug("file {} marked as ended", nextFile);
     }
     try {
-      ResumableFileLineReader file = new ResumableFileLineReader(nextFile, fileEnded,
+      ResettableFileLineReader file = new ResettableFileLineReader(nextFile, fileEnded,
           statsFilePrefix, statsFileSuffix, finishedStatsFileSuffix);
       return Optional.of(file);
     } catch (IOException e) {

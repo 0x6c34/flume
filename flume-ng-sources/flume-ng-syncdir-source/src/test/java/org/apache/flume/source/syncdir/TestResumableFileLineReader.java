@@ -16,6 +16,7 @@
 
 package org.apache.flume.source.syncdir;
 
+import org.apache.flume.serialization.ResettableFileLineReader;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -63,7 +64,7 @@ public class TestResumableFileLineReader {
 
     // test reading
     for (int i = 0; i < lines.size(); i++) {
-      ResumableFileLineReader reader = new ResumableFileLineReader(srcFile, false,
+      ResettableFileLineReader reader = new ResettableFileLineReader(srcFile, false,
          ".", ".FLUME-STATS", ".FLUME-COMPLETED");
       for (int j = 0; j < i; j++) {
         byte[] incomingLine = reader.readLine();
@@ -74,7 +75,7 @@ public class TestResumableFileLineReader {
       reader.commit();
       reader.close();
 
-      reader = new ResumableFileLineReader(srcFile, false,
+      reader = new ResettableFileLineReader(srcFile, false,
          ".",  ".FLUME-STATS", ".FLUME-COMPLETED");
       for (int j = i; j < lines.size(); j++) {
         byte[] incomingLine = reader.readLine();
@@ -89,7 +90,7 @@ public class TestResumableFileLineReader {
     }
 
     // test End of File sealing
-    ResumableFileLineReader reader = new ResumableFileLineReader(srcFile, true,
+    ResettableFileLineReader reader = new ResettableFileLineReader(srcFile, true,
         ".", ".FLUME-STATS", ".FLUME-COMPLETED");
     while (reader.readLine() != null)
       continue;

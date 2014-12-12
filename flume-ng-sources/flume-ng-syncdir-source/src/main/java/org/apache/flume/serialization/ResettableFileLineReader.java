@@ -14,7 +14,7 @@
    limitations under the License.
  */
 
-package org.apache.flume.source.syncdir;
+package org.apache.flume.serialization;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,8 +32,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** A class with information about a file being processed. */
-public class ResumableFileLineReader {
-  private static final Logger logger = LoggerFactory.getLogger(ResumableFileLineReader
+public class ResettableFileLineReader {
+  private static final Logger logger = LoggerFactory.getLogger(ResettableFileLineReader
       .class);
   private File file;
   private FileChannel ch;
@@ -61,11 +61,11 @@ public class ResumableFileLineReader {
    * @param finishedStatsFileSuffix
    * @throws IOException
    */
-  public ResumableFileLineReader(File file,
-                                 boolean fileEnded,
-                                 String statsFilePrefix,
-                                 String statsFileSuffix,
-                                 String finishedStatsFileSuffix) throws IOException {
+  public ResettableFileLineReader(File file,
+                                  boolean fileEnded,
+                                  String statsFilePrefix,
+                                  String statsFileSuffix,
+                                  String finishedStatsFileSuffix) throws IOException {
     this.file = file;
     if (file.isDirectory())
       throw new IOException("file '" + file + "' is a directory");

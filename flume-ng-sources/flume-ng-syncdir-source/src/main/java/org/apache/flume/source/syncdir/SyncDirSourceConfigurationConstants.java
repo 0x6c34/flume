@@ -33,7 +33,7 @@ public class SyncDirSourceConfigurationConstants {
   public static final String DEFAULT_END_FILE_SUFFIX = ".done";
   /**
    * Set the status files prefix and suffix while using
-   * {@link ResumableFileLineReader}.
+   * {@link org.apache.flume.serialization.ResettableFileLineReader}.
    */
   public static final String STATS_FILE_PREFIX = "syncingStatsFilePrefix";
   public static final String DEFAULT_STATS_FILE_PREFIX = ".";
@@ -42,7 +42,7 @@ public class SyncDirSourceConfigurationConstants {
   /** Suffix appended to files when they are finished being sent. */
   /**
    * Set the status file suffix's ending form while using {@link
-   * ResumableFileLineReader}.
+   * org.apache.flume.serialization.ResettableFileLineReader}.
    */
   public static final String SYNCED_STATS_FILE_SUFFIX = "syncedStatsFileSuffix";
   public static final String DEFAULT_SYNCED_STATS_FILE_SUFFIX = ".FLUME-COMPLETED";
