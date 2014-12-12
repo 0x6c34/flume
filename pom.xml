@@ -1075,6 +1075,12 @@ limitations under the License.
 
       <dependency>
         <groupId>org.apache.flume</groupId>
+        <artifactId>flume-ng-addons</artifactId>
+        <version>1.5.2</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.apache.flume</groupId>
         <artifactId>flume-tools</artifactId>
         <version>1.5.2</version>
       </dependency>
