@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -31,51 +30,40 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
-/** A class with information about a file being processed. */
-public class ResettableFileLineReader {
-  private static final Logger logger = LoggerFactory.getLogger(ResettableFileLineReader
+/**
+ * A file writer read lines out of file each time and has the capabilities to
+ * reset its current writing position to a previously marked one.
+ */
+public class ResettableFileWriter {
+  private static final Logger logger = LoggerFactory.getLogger(ResettableFileWriter
       .class);
   private File file;
   private FileChannel ch;
   private ByteBuffer byteBuffer;
   private ByteArrayOutputStream outputStream;
-  private boolean skipLF;
-  private boolean fileEnded;
   private File statsFile;
-  private File finishedStatsFile;
   private FileOutputStream statsFileOut;
   private long markedPosition = 0;
-  private long readingPosition = 0;
-  private boolean resumable = false;
-  private boolean eof = false;
-  private boolean finished = false;
-  private boolean statsFileBroken = false;
+  private long writingPosition = 0;
+  private boolean statsFileCorrupted = false;
 
   /**
-   * @param file                    to read
-   * @param fileEnded               hinted by caller, if true, then this file
-   *                                should be treated as ended, no more reading
-   *                                after this batch. if false, always reading
-   *                                from this file
+   * @param file            to read should be treated as ended, no more reading
+   *                        after this batch. if false, always reading from this
+   *                        file
    * @param statsFileSuffix
-   * @param finishedStatsFileSuffix
    * @throws IOException
    */
-  public ResettableFileLineReader(File file,
-                                  boolean fileEnded,
-                                  String statsFilePrefix,
-                                  String statsFileSuffix,
-                                  String finishedStatsFileSuffix) throws IOException {
+  public ResettableFileWriter(File file,
+                              String statsFilePrefix,
+                              String statsFileSuffix) throws IOException {
     this.file = file;
-    if (file.isDirectory())
+    if (file.exists() && file.isDirectory())
       throw new IOException("file '" + file + "' is a directory");
-    ch = new FileInputStream(file).getChannel();
-    this.skipLF = false;
-    this.fileEnded = fileEnded;
+    ch = new FileOutputStream(file).getChannel();
 
     /* stats file */
     statsFile = new File(file.getParent(), statsFilePrefix + file.getName() + statsFileSuffix);
-    finishedStatsFile = new File(file.getParent(), statsFilePrefix + file.getName() + finishedStatsFileSuffix);
 
     /* get previous line position */
     retrieveStats();
@@ -84,12 +72,6 @@ public class ResettableFileLineReader {
   /** Retrieve previous line position. */
   private void retrieveStats() throws IOException {
     logger.debug("retrieving status for file '{}'", file);
-    finished = finishedStatsFile.exists();
-    if (finished) {
-      logger.debug("found finished stats file: '{}', no more reading needed",
-          finishedStatsFile);
-      return;
-    }
     if (statsFile.exists()) {
       logger.debug("found stats file: '{}'", statsFile);
       BufferedReader reader = new BufferedReader(new FileReader(statsFile));
@@ -108,7 +90,7 @@ public class ResettableFileLineReader {
         purgeStatFile();
       }
       try {
-        readingPosition = markedPosition = Long.valueOf(lines.get(0));
+        writingPosition = markedPosition = Long.valueOf(lines.get(0));
         ch.position(markedPosition);
       } catch (NumberFormatException e) {
         logger.warn("stats file '{}' format error, reset stat file",
@@ -116,7 +98,7 @@ public class ResettableFileLineReader {
         purgeStatFile();
       }
     }
-    logger.debug("got position '{}'", statsFile, markedPosition);
+    logger.debug("got line number '{}'", statsFile, markedPosition);
   }
 
   private void ensureOpen() throws IOException {
@@ -125,55 +107,29 @@ public class ResettableFileLineReader {
     }
   }
 
-  public byte[] readLine() throws IOException {
+  public int write(final byte[] chars) throws IOException {
     /* this file was already marked as finished, EOF now */
-    if (finished || statsFileBroken || eof) return null;
+    if (statsFileCorrupted) return -1;
     ensureOpen();
 
-    if (null == outputStream) {
-      outputStream = new ByteArrayOutputStream(1024); // 1KB
-    } else {
-      outputStream.reset();
-    }
+    long initWritingPosition = writingPosition;
+
     if (null == byteBuffer) {
       byteBuffer = ByteBuffer.allocate(128 * 1024); // 128KB
     }
-    if (!resumable) {
-      byteBuffer.limit(byteBuffer.position()); // zero buffer
-      resumable = true;
-    }
 
-    while (true) {
-      while (byteBuffer.hasRemaining()) {
-        byte b = byteBuffer.get();
-        readingPosition++;
-        if (skipLF) {
-          skipLF = false;
-          if (b != '\n') {
-            byteBuffer.position(byteBuffer.position() - 1);
-            readingPosition--;
-          }
-          return outputStream.toByteArray();
-        }
-        if (b == '\n') {
-          return outputStream.toByteArray();
-        }
-        if (b == '\r') {
-          skipLF = true;
-          continue;
-        }
-        outputStream.write(b);
+    byteBuffer.clear();
+    for (byte b : chars) {
+      if (!byteBuffer.hasRemaining()) {
+        byteBuffer.flip();
+        writingPosition += ch.write(byteBuffer);
+        byteBuffer.clear();
       }
-      byteBuffer.clear(); // re-init buffer
-      if (ch.read(byteBuffer) == -1) {
-        eof = true;
-        if (outputStream.size() > 0)
-          return outputStream.toByteArray();
-        else
-          return null;
-      }
-      byteBuffer.flip();
+      byteBuffer.put(b);
     }
+    byteBuffer.flip();
+    writingPosition += ch.write(byteBuffer);
+    return (int) (writingPosition - initWritingPosition);
   }
 
   public void close() throws IOException {
@@ -181,7 +137,7 @@ public class ResettableFileLineReader {
       ch.close();
     if (null != statsFileOut)
       statsFileOut.close();
-    logger.debug("close file: '{}'", file);
+    logger.debug("close stat file: '{}'", file);
   }
 
   private void purgeStatFile() throws IOException {
@@ -192,13 +148,8 @@ public class ResettableFileLineReader {
 
   /** Record the position of current reading file into stats file. */
   public void commit() throws IOException {
-    if (finished) {
-      logger.warn("commit while file is marked as finished: {}", file);
-      return;
-    }
-
-    if (statsFileBroken) {
-      logger.warn("commit while file's stat file is unavailable: {}", file);
+    if (statsFileCorrupted) {
+      logger.warn("stats file '{}' corrupted, do nothing", statsFile);
       return;
     }
 
@@ -206,34 +157,29 @@ public class ResettableFileLineReader {
     try {
       if (null == statsFileOut) {
         statsFileOut = new FileOutputStream(statsFile, false);
-        statsFileBroken = false;
+        statsFileCorrupted = false;
       }
     } catch (IOException ioe) {
-      statsFileBroken = true;
+      statsFileCorrupted = true;
       throw new IOException("cannot create stats file for log file '" + file +
           "', this class needs stats file to function normally", ioe);
     }
     statsFileOut.getChannel().position(0);
-    statsFileOut.write(String.valueOf(readingPosition).getBytes());
+    statsFileOut.write(String.valueOf(writingPosition).getBytes());
     statsFileOut.flush();
-    markedPosition = readingPosition;
+    markedPosition = writingPosition;
     logger.trace("committed '{}', position: {}", statsFile, markedPosition);
-    if (fileEnded && eof) {
-      logger.debug("sealing stats file, renaming from '{}' to '{}'",
-          statsFile, finishedStatsFile);
-      statsFileOut.close();
-      statsFile.renameTo(finishedStatsFile);
-      logger.debug("file '{}' marked as done", file);
-      finished = true;
-    }
   }
 
   /** Rewind reading position to previous recorded position. */
   public void reset() throws IOException {
-    if (finished || statsFileBroken) return;
+    logger.debug(": {}", file);
+    if (statsFileCorrupted) {
+      logger.warn("stats file '{}' corrupted, do nothing", statsFile);
+      return;
+    }
 
-    resumable = false;
-    readingPosition = markedPosition;
+    writingPosition = markedPosition;
     ch.position(markedPosition);
     logger.info("file '{}': reverted to previous marked position: [{}]",
         file, String.valueOf(markedPosition));
@@ -242,5 +188,5 @@ public class ResettableFileLineReader {
   public File getFile() {
     return file;
   }
-}
 
+}
