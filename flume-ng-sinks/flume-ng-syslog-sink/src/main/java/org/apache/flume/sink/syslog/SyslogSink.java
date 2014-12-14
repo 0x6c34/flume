@@ -8,31 +8,46 @@ import org.apache.flume.EventDeliveryException;
 import org.apache.flume.FlumeException;
 import org.apache.flume.Transaction;
 import org.apache.flume.conf.Configurable;
+import org.apache.flume.event.EventBuilder;
 import org.apache.flume.instrumentation.SinkCounter;
 import org.apache.flume.sink.AbstractSink;
-import org.apache.log4j.Priority;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Calendar;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Map;
 
-/**
- * Configurable items: - host: syslog host string, not optional -
- * sink.batchSize: event processing batch size, optional, defaults to 100
+/*
+ * Configurable items:
+ *  - host: syslog host string, not optional
+ *  - sink.batchSize: event processing batch size, optional, defaults to 100
  */
 public class SyslogSink extends AbstractSink implements Configurable {
   private static Logger logger;
 
-  private SinkCounter sinkCounter = new SinkCounter(getName());
-  private int batchSize;
+  //private boolean usePri;
+  //private int defaultFacility; // range: 0-23
+  //private String facilityKey;
+  //private int defaultSeverity; // range: 0-7
+  //private String severityKey;
+  //private boolean useHeader;
+  //private String host;
+  //private String hostKey;
+  //private String timestampKey;
+  //private boolean useTag;
+  //private String tag;
+  //private String tagKey;
+  //private int mode;
+
+  private String remote;
+  private boolean split;
   private int retryInterval;
 
-  private int facility; // range: 0-23
-  private int severity; // range: 0-7
-  private String host;
-  private boolean split;
-  private Mode mode;
+  private int batchSize;
+
+  private SinkCounter sinkCounter = new SinkCounter(getName());
 
   private SyslogWriter syslogWriter;
 
@@ -42,31 +57,71 @@ public class SyslogSink extends AbstractSink implements Configurable {
     logger = LoggerFactory.getLogger(SyslogSink.class.getName() + "-" +
         getName());
 
-    facility = context.getInteger(SyslogSinkConfigurationConstants.FACILITY,
+    boolean usePri = context.getBoolean(
+        SyslogSinkConfigurationConstants.USE_PRI,
+        SyslogSinkConfigurationConstants.DEFAULT_USE_PRI);
+    int defaultFacility = context.getInteger(
+        SyslogSinkConfigurationConstants.FACILITY,
         SyslogSinkConfigurationConstants.DEFAULT_FACILITY);
-    severity = context.getInteger(SyslogSinkConfigurationConstants.SEVERITY,
+    facilityKey = context.getString(
+        SyslogSinkConfigurationConstants.FACILITY_KEY,
+        SyslogSinkConfigurationConstants.DEFAULT_FACILITY_KEY);
+    defaultSeverity = context.getInteger(
+        SyslogSinkConfigurationConstants.SEVERITY,
         SyslogSinkConfigurationConstants.DEFAULT_SEVERITY);
+    severityKey = context.getString(
+        SyslogSinkConfigurationConstants.SEVERITY_KEY,
+        SyslogSinkConfigurationConstants.DEFAULT_SEVERITY_KEY);
+    useHeader = context.getBoolean(
+        SyslogSinkConfigurationConstants.USE_HEADER,
+        SyslogSinkConfigurationConstants.DEFAULT_USE_HEADER);
     host = context.getString(SyslogSinkConfigurationConstants.HOST);
-    split = context.getBoolean(SyslogSinkConfigurationConstants.SPLIT,
+    hostKey = context.getString(
+        SyslogSinkConfigurationConstants.HOST_KEY,
+        SyslogSinkConfigurationConstants.DEFAULT_HOST_KEY);
+    timestampKey = context.getString(
+        SyslogSinkConfigurationConstants.TIMESTAMP_KEY,
+        SyslogSinkConfigurationConstants.DEFAULT_TIMESTAMP_KEY);
+    useTag = context.getBoolean(
+        SyslogSinkConfigurationConstants.USE_TAG,
+        SyslogSinkConfigurationConstants.DEFAULT_USE_TAG);
+    tag = context.getString(
+        SyslogSinkConfigurationConstants.TAG);
+    tagKey = context.getString(
+        SyslogSinkConfigurationConstants.TAG_KEY,
+        SyslogSinkConfigurationConstants.DEFAULT_TAG_KEY);
+
+    remote = context.getString(SyslogSinkConfigurationConstants.REMOTE);
+    split = context.getBoolean(
+        SyslogSinkConfigurationConstants.SPLIT,
         SyslogSinkConfigurationConstants.DEFAULT_SPLIT);
-    String mode = context.getString(SyslogSinkConfigurationConstants.MODE,
-        SyslogSinkConfigurationConstants.DEFAULT_MODE);
-    retryInterval = context.getInteger(SyslogSinkConfigurationConstants
-            .RETRY_INTERVAL,
-        SyslogSinkConfigurationConstants.DEFAULT_RETRY_INTERVAL
-    );
-    batchSize = context.getInteger(SyslogSinkConfigurationConstants.BATCH_SIZE,
+    retryInterval = context.getInteger(
+        SyslogSinkConfigurationConstants.RETRY_INTERVAL,
+        SyslogSinkConfigurationConstants.DEFAULT_RETRY_INTERVAL);
+
+    batchSize = context.getInteger(
+        SyslogSinkConfigurationConstants.BATCH_SIZE,
         SyslogSinkConfigurationConstants.DEFAULT_BATCH_SIZE);
 
-    Preconditions.checkArgument(facility >= 0 && facility <= 23,
+    /* check config */
+    Preconditions.checkArgument(defaultFacility >= 0 && defaultFacility <= 23,
         "facility out of range");
-    Preconditions.checkArgument(severity >= 0 && severity <= 7,
+    Preconditions.checkArgument(defaultSeverity >= 0 && defaultSeverity <= 7,
         "severity out of range");
-    Preconditions.checkNotNull(host, "syslog host must not be null");
-    for (Mode m : Mode.values()) {
-      this.mode = m.name().equals(mode.toUpperCase()) ? m : this.mode;
+    Preconditions.checkNotNull(remote, "syslog remote host must not be null");
+    /* assign default hostname */
+    if (null == host) {
+      try {
+        host = InetAddress.getLocalHost().getHostName();
+      } catch (UnknownHostException e) {
+        host = "localhost";
+      }
     }
-    Preconditions.checkArgument(this.mode != null, "unsupported mode: " + mode);
+    /* assign meta part */
+    mode = usePri ? (mode | SyslogWriter.PRI) : mode;
+    mode = useHeader ? (mode | SyslogWriter.HEADER) : mode;
+    mode = useTag ? (mode | SyslogWriter.TAG) : mode;
+
     sinkCounter = new SinkCounter(this.getName());
   }
 
@@ -82,7 +137,6 @@ public class SyslogSink extends AbstractSink implements Configurable {
       throw new FlumeException("error while retrieving Syslog writer with " +
           "host string: " + host, e);
     }
-    syslogWriter.setMode(mode);
     syslogWriter.setSplit(split);
 
     // flume sink start
@@ -133,15 +187,11 @@ public class SyslogSink extends AbstractSink implements Configurable {
           break;
         } else {
           sinkCounter.incrementEventDrainAttemptCount();
-          switch (mode) {
-            case COPY:
-              syslogWriter.write(event.getBody());
-            case RELAY:
-              syslogWriter.relay(false, facility, severity,
-                  Calendar.getInstance().getTime(), host, event.getBody());
-            case FORCE_RELAY:
-              syslogWriter.relay(true, facility, severity,
-                  Calendar.getInstance().getTime(), host, event.getBody());
+          Map<String, String> headers = event.getHeaders();
+          if (usePri) {
+            if (!headers.containsKey(facilityKey)) {
+              // TODO:
+            }
           }
         }
       }

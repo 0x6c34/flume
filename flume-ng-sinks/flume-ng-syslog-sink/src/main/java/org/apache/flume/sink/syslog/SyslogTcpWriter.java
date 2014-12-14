@@ -14,7 +14,7 @@ class SyslogTcpWriter extends SyslogWriter {
 
   public SyslogTcpWriter(final InetAddress address, final int port)
   throws IOException {
-    this.address = address;
+    this.remote = address;
     this.port = port;
 
     this.s = new Socket(address, port);

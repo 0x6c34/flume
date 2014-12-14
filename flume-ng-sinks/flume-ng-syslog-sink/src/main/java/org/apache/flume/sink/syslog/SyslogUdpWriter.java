@@ -12,7 +12,7 @@ class SyslogUdpWriter extends SyslogWriter {
 
   public SyslogUdpWriter(final InetAddress address, final int port)
   throws SocketException {
-    this.address = address;
+    this.remote = address;
     this.port = port;
 
     this.ds = new DatagramSocket();
@@ -22,7 +22,7 @@ class SyslogUdpWriter extends SyslogWriter {
   public void write(final byte[] packet)
   throws IOException {
 
-    if (this.ds != null && this.address != null) {
+    if (this.ds != null && this.remote != null) {
       //
       //  syslog packets must be less than 1024 bytes
       //
@@ -31,7 +31,7 @@ class SyslogUdpWriter extends SyslogWriter {
         bytesLength = 1024;
       }
       DatagramPacket dPacket = new DatagramPacket(packet, bytesLength,
-          address, port);
+          remote, port);
       ds.send(dPacket);
     }
   }
