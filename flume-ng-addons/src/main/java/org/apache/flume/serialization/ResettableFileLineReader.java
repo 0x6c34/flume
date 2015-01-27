@@ -103,7 +103,7 @@ public class ResettableFileLineReader {
         reader.close();
       }
       if (lines.size() == 0 || lines.get(0).length() == 0) {
-        logger.error("stats file '{}' statsFileBroken, reset position to 0",
+        logger.error("stats file '{}' statsFile invalid, reset position to 0",
             statsFile);
         purgeStatFile();
       }
@@ -186,9 +186,13 @@ public class ResettableFileLineReader {
   }
 
   private void purgeStatFile() throws IOException {
-    statsFileOut.close();
-    statsFileOut = null;
-    statsFile.delete();
+    if (null != statsFileOut) {
+      statsFileOut.close();
+      statsFileOut = null;
+    }
+    if (null != statsFile) {
+      statsFile.delete();
+    }
   }
 
   /** Record the position of current reading file into stats file. */
