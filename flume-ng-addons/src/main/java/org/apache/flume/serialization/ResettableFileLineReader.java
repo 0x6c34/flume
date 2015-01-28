@@ -49,7 +49,7 @@ public class ResettableFileLineReader {
   private boolean resumable = false;
   private boolean eof = false;
   private boolean finished = false;
-  private boolean statsFileBroken = false;
+  private boolean invalidStatsFile = false;
 
   /**
    * @param file                    to read
@@ -103,9 +103,10 @@ public class ResettableFileLineReader {
         reader.close();
       }
       if (lines.size() == 0 || lines.get(0).length() == 0) {
-        logger.error("stats file '{}' statsFile invalid, reset position to 0",
+        logger.error("stats file '{}' empty, will re-read corresponding file",
             statsFile);
         purgeStatFile();
+        return;
       }
       try {
         readingPosition = markedPosition = Long.valueOf(lines.get(0));
@@ -128,7 +129,7 @@ public class ResettableFileLineReader {
 
   public byte[] readLine() throws IOException {
     /* this file was already marked as finished, EOF now */
-    if (finished || statsFileBroken || eof) return null;
+    if (finished || invalidStatsFile || eof) return null;
     ensureOpen();
 
     if (null == outputStream) {
@@ -202,7 +203,7 @@ public class ResettableFileLineReader {
       return;
     }
 
-    if (statsFileBroken) {
+    if (invalidStatsFile) {
       logger.warn("commit while file's stat file is unavailable: {}", file);
       return;
     }
@@ -211,10 +212,10 @@ public class ResettableFileLineReader {
     try {
       if (null == statsFileOut) {
         statsFileOut = new FileOutputStream(statsFile, false);
-        statsFileBroken = false;
+        invalidStatsFile = false;
       }
     } catch (IOException ioe) {
-      statsFileBroken = true;
+      invalidStatsFile = true;
       throw new IOException("cannot create stats file for log file '" + file +
           "', this class needs stats file to function normally", ioe);
     }
@@ -235,7 +236,7 @@ public class ResettableFileLineReader {
 
   /** Rewind reading position to previous recorded position. */
   public void reset() throws IOException {
-    if (finished || statsFileBroken) return;
+    if (finished || invalidStatsFile) return;
 
     resumable = false;
     readingPosition = markedPosition;
