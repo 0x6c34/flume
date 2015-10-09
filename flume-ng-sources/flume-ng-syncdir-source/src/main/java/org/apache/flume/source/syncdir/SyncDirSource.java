@@ -61,6 +61,7 @@ public class SyncDirSource extends AbstractSource implements
   private String statsFilePrefix;
   private String syncingStatsFileSuffix;
   private String syncedStatsFileSuffix;
+  private String ignoredFileRegex;
   private String filenameHeaderKey =
       SyncDirSourceConfigurationConstants.FILENAME_HEADER_KEY;
   private int batchSize;
@@ -81,7 +82,7 @@ public class SyncDirSource extends AbstractSource implements
 
     reader = new SyncDirFileLineReader(
         syncDirectory, endFileSuffix,
-        statsFilePrefix, syncingStatsFileSuffix, syncedStatsFileSuffix);
+        statsFilePrefix, syncingStatsFileSuffix, syncedStatsFileSuffix, ignoredFileRegex);
     runner = new DirectorySyncRunnable(reader, counterGroup);
 
     executor = Executors.newSingleThreadScheduledExecutor();
@@ -128,6 +129,9 @@ public class SyncDirSource extends AbstractSource implements
     syncedStatsFileSuffix = context.getString(
         SyncDirSourceConfigurationConstants.SYNCED_STATS_FILE_SUFFIX,
         SyncDirSourceConfigurationConstants.DEFAULT_SYNCED_STATS_FILE_SUFFIX);
+    ignoredFileRegex = context.getString(
+        SyncDirSourceConfigurationConstants.IGNORED_FILE_REGEX,
+        SyncDirSourceConfigurationConstants.DEFAULT_IGNORED_FILE_REGEX);
     batchSize = context.getInteger(
         SyncDirSourceConfigurationConstants.BATCH_SIZE,
         SyncDirSourceConfigurationConstants.DEFAULT_BATCH_SIZE);

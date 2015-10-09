@@ -51,6 +51,7 @@ public class SyncDirFileLineReader {
   private String statsFilePrefix;
   private String statsFileSuffix;
   private String finishedStatsFileSuffix;
+  private String ignoredFileRegex;
   private Iterator<File> filesIterator;
   private Optional<ResettableFileLineReader> currentFile = Optional.absent();
   /** Always contains the last file from which lines have been read. * */
@@ -66,12 +67,14 @@ public class SyncDirFileLineReader {
    * @param endFileSuffix           The suffix to append to completed files
    * @param statsFileSuffix
    * @param finishedStatsFileSuffix
+   * @param ignoredFileRegex      Files with name matched with this regex will be ignored
    */
   public SyncDirFileLineReader(File directory,
                                final String endFileSuffix,
                                final String statsFilePrefix,
                                final String statsFileSuffix,
-                               final String finishedStatsFileSuffix) {
+                               final String finishedStatsFileSuffix,
+                               final String ignoredFileRegex) {
     // Verify syncDirectory exists and is readable/writable
     Preconditions.checkNotNull(directory);
     Preconditions.checkState(directory.exists(),
@@ -94,6 +97,7 @@ public class SyncDirFileLineReader {
     this.statsFilePrefix = statsFilePrefix;
     this.statsFileSuffix = statsFileSuffix;
     this.finishedStatsFileSuffix = finishedStatsFileSuffix;
+    this.ignoredFileRegex = ignoredFileRegex;
   }
 
   /**
@@ -231,17 +235,19 @@ public class SyncDirFileLineReader {
         @Override
         public boolean accept(File file) {
           if (!file.exists()) return false; // skip non-exist files in iterator
-          if (file.isFile()) {
-            String fileStr = file.getName();
-            if (!(fileStr.endsWith(endFileSuffix) ||
-                fileStr.endsWith(statsFileSuffix) ||
-                fileStr.endsWith(finishedStatsFileSuffix))) {
-              File finishedMarkFile = new File(file.getPath() + finishedStatsFileSuffix);
-              if (!finishedMarkFile.exists())
-                return true;
-            }
+          if (!file.isFile()) return false; // skip non-files
+          String fileStr = file.getName();
+          if ((fileStr.endsWith(endFileSuffix) ||
+              fileStr.endsWith(statsFileSuffix) ||
+              fileStr.endsWith(finishedStatsFileSuffix) ||
+              fileStr.matches(ignoredFileRegex))) {
+            // skip meta files and ignored files
+            return false;
           }
-          return false;
+          File finishedMarkFile = new File(file.getPath() + finishedStatsFileSuffix);
+          if (finishedMarkFile.exists()) return false; // ignore finished files
+
+          return true;
         }
 
         @Override

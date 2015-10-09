@@ -47,6 +47,9 @@ public class SyncDirSourceConfigurationConstants {
   public static final String SYNCED_STATS_FILE_SUFFIX = "syncedStatsFileSuffix";
   public static final String DEFAULT_SYNCED_STATS_FILE_SUFFIX = ".FLUME-COMPLETED";
 
+  public static final String IGNORED_FILE_REGEX = "ignoredFileSuffix";
+  public static final String DEFAULT_IGNORED_FILE_REGEX = "";
+
   /** Header in which to put relative filename. */
   public static final String FILENAME_HEADER_KEY = "path";
   /** What size to batch with before sending to ChannelProcessor. */
