@@ -39,7 +39,6 @@ public class ResettableFileLineReader {
   private FileChannel ch;
   private ByteBuffer byteBuffer;
   private ByteArrayOutputStream outputStream;
-  private boolean skipLF;
   private boolean fileEnded;
   private File statsFile;
   private File finishedStatsFile;
@@ -70,7 +69,6 @@ public class ResettableFileLineReader {
     if (file.isDirectory())
       throw new IOException("file '" + file + "' is a directory");
     ch = new FileInputStream(file).getChannel();
-    this.skipLF = false;
     this.fileEnded = fileEnded;
 
     /* stats file */
@@ -149,20 +147,8 @@ public class ResettableFileLineReader {
       while (byteBuffer.hasRemaining()) {
         byte b = byteBuffer.get();
         readingPosition++;
-        if (skipLF) {
-          skipLF = false;
-          if (b != '\n') {
-            byteBuffer.position(byteBuffer.position() - 1);
-            readingPosition--;
-          }
+        if (b == '\u001E') {
           return outputStream.toByteArray();
-        }
-        if (b == '\n') {
-          return outputStream.toByteArray();
-        }
-        if (b == '\r') {
-          skipLF = true;
-          continue;
         }
         outputStream.write(b);
       }
