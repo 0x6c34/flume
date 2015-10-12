@@ -64,6 +64,8 @@ public class SyncDirSource extends AbstractSource implements
   private String ignoredFileRegex;
   private String filenameHeaderKey =
       SyncDirSourceConfigurationConstants.FILENAME_HEADER_KEY;
+  private String bodyHeaderKey;
+  private String bodyHeader;
   private int batchSize;
   private ScheduledExecutorService executor;
   private CounterGroup counterGroup;
@@ -132,6 +134,12 @@ public class SyncDirSource extends AbstractSource implements
     ignoredFileRegex = context.getString(
         SyncDirSourceConfigurationConstants.IGNORED_FILE_REGEX,
         SyncDirSourceConfigurationConstants.DEFAULT_IGNORED_FILE_REGEX);
+    bodyHeaderKey = context.getString(
+        SyncDirSourceConfigurationConstants.MESSAGE_BODYJSON_HEADER_KEY,
+        SyncDirSourceConfigurationConstants.DEFAULT_MESSAGE_BODYJSON_HEADER_KEY);
+    bodyHeader = context.getString(
+        SyncDirSourceConfigurationConstants.MESSAGE_BODYJSON_HEADER,
+        SyncDirSourceConfigurationConstants.DEFAULT_MESSAGE_BODYJSON_HEADER);
     batchSize = context.getInteger(
         SyncDirSourceConfigurationConstants.BATCH_SIZE,
         SyncDirSourceConfigurationConstants.DEFAULT_BATCH_SIZE);
@@ -144,7 +152,13 @@ public class SyncDirSource extends AbstractSource implements
   }
 
   private Event createEvent(byte[] lineEntry, String filename) {
-    Event out = EventBuilder.withBody(lineEntry);
+    String body = new String(lineEntry);
+    String header1 = "{\"" + bodyHeaderKey + "\":" + bodyHeader + ",";
+    String body1 = "\"body\":" + body + "}";
+    String line1 = header1 + body1;
+
+    byte[] line = line1.getBytes();
+    Event out = EventBuilder.withBody(line);
     if (directoryPrefix.length() > 0) {
       out.getHeaders().put(filenameHeaderKey,
           directoryPrefix + File.separator + filename);

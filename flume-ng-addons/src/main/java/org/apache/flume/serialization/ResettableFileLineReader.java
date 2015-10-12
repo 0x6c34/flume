@@ -28,6 +28,9 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -71,9 +74,16 @@ public class ResettableFileLineReader {
     ch = new FileInputStream(file).getChannel();
     this.fileEnded = fileEnded;
 
+    //get file inode
+    Path path = Paths.get(file.getPath());
+    BasicFileAttributes bfa = java.nio.file.Files.readAttributes(path, BasicFileAttributes.class);
+    String fileInfo = bfa.fileKey().toString();
+    fileInfo = fileInfo.substring(1, fileInfo.length() - 1);
+    String inode = fileInfo.split(",")[1].split("=")[1];
+
     /* stats file */
-    statsFile = new File(file.getParent(), statsFilePrefix + file.getName() + statsFileSuffix);
-    finishedStatsFile = new File(file.getParent(), statsFilePrefix + file.getName() + finishedStatsFileSuffix);
+    statsFile = new File(file.getParent(), statsFilePrefix + inode + statsFileSuffix);
+    finishedStatsFile = new File(file.getParent(), statsFilePrefix + inode + finishedStatsFileSuffix);
 
     /* get previous line position */
     retrieveStats();

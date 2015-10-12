@@ -52,6 +52,14 @@ public class SyncDirSourceConfigurationConstants {
 
   /** Header in which to put relative filename. */
   public static final String FILENAME_HEADER_KEY = "path";
+
+  /** Header inside message body, now use JSON as message body format */
+  public static final String MESSAGE_BODYJSON_HEADER_KEY="bodyheaderkey";
+  public static final String DEFAULT_MESSAGE_BODYJSON_HEADER_KEY="header";
+  /** Header inside message body, now use JSON as message body format */
+  public static final String MESSAGE_BODYJSON_HEADER="bodyheader";
+  public static final String DEFAULT_MESSAGE_BODYJSON_HEADER="";
+
   /** What size to batch with before sending to ChannelProcessor. */
   public static final String BATCH_SIZE = "batchSize";
   public static final int DEFAULT_BATCH_SIZE = 100;
