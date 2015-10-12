@@ -30,7 +30,9 @@ import org.apache.flume.source.AbstractSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -152,13 +154,20 @@ public class SyncDirSource extends AbstractSource implements
   }
 
   private Event createEvent(byte[] lineEntry, String filename) {
-    String body = new String(lineEntry);
-    String header1 = "{\"" + bodyHeaderKey + "\":" + bodyHeader + ",";
-    String body1 = "\"body\":" + body + "}";
-    String line1 = header1 + body1;
+    ByteArrayOutputStream bo = new ByteArrayOutputStream(lineEntry.length + 50);
+    try {
+      bo.write("{\"".getBytes());
+      bo.write(bodyHeaderKey.getBytes());
+      bo.write("\":".getBytes());
+      bo.write(bodyHeader.getBytes());
+      bo.write(",\"body\":".getBytes());
+      bo.write(lineEntry);
+      bo.write("}".getBytes());
+    } catch (IOException e) {
+      logger.error("error building message", e);
+    }
 
-    byte[] line = line1.getBytes();
-    Event out = EventBuilder.withBody(line);
+    Event out = EventBuilder.withBody(bo.toByteArray());
     if (directoryPrefix.length() > 0) {
       out.getHeaders().put(filenameHeaderKey,
           directoryPrefix + File.separator + filename);
